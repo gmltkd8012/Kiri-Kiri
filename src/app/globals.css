@@ -24,3 +24,17 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===== Input 스타일 ===== */
+
+/* 입력 텍스트 색상 */
+input,
+textarea {
+  color: #1f2937 !important; /* gray-800 */
+}
+
+/* placeholder(힌트) 색상 */
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important; /* gray-400 */
+}
