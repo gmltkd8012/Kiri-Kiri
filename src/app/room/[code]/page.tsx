@@ -187,20 +187,37 @@ export default function RoomPage() {
             }
           />
           
+          {/* 선택된 날짜 표시 */}
           {selectedDates.length > 0 && (
             <div className="mt-4">
-              <p className="text-sm text-gray-600 mb-2">
+                <p className="text-sm text-gray-600 mb-2">
                 선택된 날짜: {selectedDates.length}개
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {selectedDates.map((d, i) => (
-                  <span key={i} className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded">
-                    {d.toLocaleDateString('ko-KR')}
-                  </span>
-                ))}
-              </div>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                {selectedDates
+                    .sort((a, b) => a.getTime() - b.getTime())  // 날짜순 정렬
+                    .map((d, i) => (
+                    <span 
+                        key={i} 
+                        className="inline-flex items-center gap-1 text-xs bg-violet-100 text-violet-700 pl-2 pr-1 py-1 rounded"
+                    >
+                        {d.toLocaleDateString('ko-KR')}
+                        <button
+                        onClick={() => {
+                            setSelectedDates(selectedDates.filter(
+                            date => date.toDateString() !== d.toDateString()
+                            ));
+                        }}
+                        className="ml-1 w-4 h-4 rounded-full bg-violet-300 hover:bg-violet-500 text-white flex items-center justify-center text-xs font-bold"
+                        >
+                        ×
+                        </button>
+                    </span>
+                    ))}
+                </div>
             </div>
           )}
+
 
           {isJoined && selectedDates.length > 0 && (
             <button
@@ -216,13 +233,13 @@ export default function RoomPage() {
         {showCreateVote && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-              <h3 className="text-lg font-bold mb-4">투표 만들기</h3>
+              <h3 className="text-lg font-bold mb-4 text-gray-800">투표 만들기</h3>
               <input
                 type="text"
                 value={voteTitle}
                 onChange={(e) => setVoteTitle(e.target.value)}
                 placeholder="투표 제목 (예: 1월 모임)"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl mb-4"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-violet-500 outline-none transition mb-4"
                 maxLength={30}
               />
               <p className="text-sm text-gray-500 mb-4">
