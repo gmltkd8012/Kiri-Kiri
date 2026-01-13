@@ -38,3 +38,113 @@ input::placeholder,
 textarea::placeholder {
   color: #9ca3af !important; /* gray-400 */
 }
+
+/* ===== 캘린더 커스텀 스타일 ===== */
+.react-calendar {
+  width: 100% !important;
+  border: none !important;
+  font-family: inherit !important;
+  background: transparent !important;
+}
+
+/* 네비게이션 (월 이동) */
+.react-calendar__navigation {
+  margin-bottom: 10px !important;
+}
+
+.react-calendar__navigation button {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+  background: transparent !important;
+}
+
+.react-calendar__navigation button:hover {
+  background-color: #f3f4f6 !important;
+  border-radius: 8px !important;
+}
+
+/* 요일 헤더 (일 월 화 수 목 금 토) */
+.react-calendar__month-view__weekdays {
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
+
+.react-calendar__month-view__weekdays__weekday {
+  padding: 8px 0 !important;
+}
+
+.react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none !important;
+}
+
+/* 일요일 헤더 - 빨간색 */
+.react-calendar__month-view__weekdays__weekday:nth-child(1) abbr {
+  color: #ef4444 !important;
+}
+
+/* 토요일 헤더 - 파란색 */
+.react-calendar__month-view__weekdays__weekday:nth-child(7) abbr {
+  color: #3b82f6 !important;
+}
+
+/* 평일 헤더 - 검은색 */
+.react-calendar__month-view__weekdays__weekday:nth-child(n+2):nth-child(-n+6) abbr {
+  color: #1f2937 !important;
+}
+
+/* 날짜 타일 */
+.react-calendar__tile {
+  padding: 12px 8px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  color: #1f2937 !important;
+  background: transparent !important;
+}
+
+.react-calendar__tile:hover {
+  background-color: #f3e8ff !important;
+}
+
+/* 오늘 날짜 */
+.react-calendar__tile--now {
+  background-color: #fef3c7 !important;
+}
+
+/* 선택된 날짜 */
+.react-calendar__tile--active {
+  background-color: #8b5cf6 !important;
+  color: white !important;
+}
+
+/* 일요일 날짜 - 빨간색 */
+.react-calendar__month-view__days__day--weekend:nth-child(7n+1) {
+  color: #ef4444 !important;
+}
+
+/* 토요일 날짜 - 파란색 */
+.react-calendar__month-view__days__day--weekend:nth-child(7n) {
+  color: #3b82f6 !important;
+}
+
+/* 이전/다음 달 날짜 흐리게 */
+.react-calendar__month-view__days__day--neighboringMonth {
+  color: #d1d5db !important;
+}
+
+/* 선택된 날짜 */
+.selected-date {
+  background-color: #8b5cf6 !important;
+  color: white !important;
+}
+
+/* 공휴일 - 빨간색 */
+.holiday {
+  color: #ef4444 !important;
+}
+
+/* 선택된 공휴일은 흰색 유지 */
+.selected-date.holiday {
+  color: white !important;
+}
+

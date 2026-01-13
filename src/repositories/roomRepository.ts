@@ -8,11 +8,11 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { Room } from '@/models/types';
+import { addParticipant } from './participantRepository';  // 추가
 
 const COLLECTION_NAME = 'rooms';
 const MAX_RETRY = 5;
 
-// 12자리 랜덤 코드 생성
 const generateCode = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = '';
@@ -22,7 +22,6 @@ const generateCode = (): string => {
   return code;
 };
 
-// 코드 중복 체크
 const isCodeExists = async (code: string): Promise<boolean> => {
   const q = query(
     collection(db, COLLECTION_NAME),
@@ -32,7 +31,6 @@ const isCodeExists = async (code: string): Promise<boolean> => {
   return !snapshot.empty;
 };
 
-// 유니크한 코드 생성
 const generateUniqueCode = async (): Promise<string> => {
   let code = generateCode();
   let retry = 0;
@@ -48,7 +46,7 @@ const generateUniqueCode = async (): Promise<string> => {
   return code;
 };
 
-// 방 생성
+// 방 생성 (방장을 참가자로 자동 추가)
 export const createRoom = async (
   title: string,
   hostNickname: string,
@@ -63,13 +61,16 @@ export const createRoom = async (
     title,
     hostNickname,
     createdAt: new Date(),
-    ...(memo && { memo }), // memo가 있을 때만 추가
+    ...(memo && { memo }),
   };
 
   await setDoc(roomRef, {
     ...room,
     createdAt: room.createdAt.toISOString(),
   });
+
+  // 방장을 참가자로 자동 추가
+  await addParticipant(code, hostNickname);
 
   return room;
 };
