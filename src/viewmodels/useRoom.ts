@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Room } from '@/models/types';
 import { createRoom, getRoomByCode } from '@/repositories/roomRepository';
+import { addParticipant } from '@/repositories/participantRepository';
 
 export const useRoom = () => {
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export const useRoom = () => {
   };
 
   // 방 입장
-  const handleJoinRoom = async (code: string): Promise<Room | null> => {
+  const handleJoinRoom = async (code: string, nickname: string): Promise<Room | null> => {
     setLoading(true);
     setError(null);
     
@@ -40,6 +41,8 @@ export const useRoom = () => {
         setError('존재하지 않는 초대 코드입니다.');
         return null;
       }
+
+      await addParticipant(code, nickname);
       return room;
     } catch (err) {
       setError('방 입장에 실패했습니다.');

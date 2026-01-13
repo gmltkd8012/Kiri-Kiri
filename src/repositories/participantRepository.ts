@@ -19,9 +19,8 @@ export const addParticipant = async (
 ): Promise<Participant> => {
   // 이미 참가한 닉네임인지 체크
   const existing = await getParticipantByNickname(roomCode, nickname);
-  if (existing) {
-    return existing;
-  }
+  
+  if (existing) return existing;
 
   const participantRef = doc(collection(db, COLLECTION_NAME));
   

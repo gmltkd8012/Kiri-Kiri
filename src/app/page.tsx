@@ -23,8 +23,8 @@ export default function Home() {
       alert('초대 코드를 입력해주세요.');
       return;
     }
-    
-    const room = await handleJoinRoom(inviteCode);
+
+    const room = await handleJoinRoom(inviteCode, nickname);
     if (room) {
       localStorage.setItem('nickname', nickname);
       router.push(`/room/${room.code}`);
