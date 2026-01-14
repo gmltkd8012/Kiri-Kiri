@@ -62,26 +62,54 @@ export const getVotesByRoom = async (roomCode: string): Promise<Vote[]> => {
   });
 };
 
-// 투표 응답 제출
+// 투표 응답 제출 (재투표 시 기존 데이터 업데이트)
 export const submitVoteResponse = async (
   voteId: string,
   nickname: string,
   selectedDates: string[]
 ): Promise<VoteResponse> => {
-  const responseRef = doc(collection(db, RESPONSES_COLLECTION));
-  
+  // 기존 투표 응답 확인
+  const q = query(
+    collection(db, RESPONSES_COLLECTION),
+    where('voteId', '==', voteId),
+    where('nickname', '==', nickname)
+  );
+
+  const snapshot = await getDocs(q);
+
+  let responseRef;
+  let responseId;
+
+  if (!snapshot.empty) {
+    // 기존 투표가 있으면 업데이트
+    const existingDoc = snapshot.docs[0];
+    responseRef = existingDoc.ref;
+    responseId = existingDoc.id;
+
+    await updateDoc(responseRef, {
+      selectedDates,
+      createdAt: new Date().toISOString(),
+    });
+  } else {
+    // 새로운 투표 생성
+    responseRef = doc(collection(db, RESPONSES_COLLECTION));
+    responseId = responseRef.id;
+
+    await setDoc(responseRef, {
+      voteId,
+      nickname,
+      selectedDates,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   const response: VoteResponse = {
-    id: responseRef.id,
+    id: responseId,
     voteId,
     nickname,
     selectedDates,
     createdAt: new Date(),
   };
-
-  await setDoc(responseRef, {
-    ...response,
-    createdAt: response.createdAt.toISOString(),
-  });
 
   return response;
 };

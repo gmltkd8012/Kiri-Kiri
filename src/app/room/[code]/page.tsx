@@ -4,6 +4,8 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import { useRoomDetail } from '@/viewmodels/useRoomDetail';
+import { getVoteResponses, submitVoteResponse } from '@/repositories/voteRepository';
+import { VoteResponse } from '@/models/types';
 import 'react-calendar/dist/Calendar.css';
 
 type ValuePiece = Date | null;
@@ -36,6 +38,10 @@ export default function RoomPage() {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [voteTitle, setVoteTitle] = useState('');
   const [showCreateVote, setShowCreateVote] = useState(false);
+  const [showVoteModal, setShowVoteModal] = useState(false);
+  const [selectedVote, setSelectedVote] = useState<typeof votes[0] | null>(null);
+  const [voteResponses, setVoteResponses] = useState<{ [key: string]: string[] }>({});
+  const [mySelectedDates, setMySelectedDates] = useState<string[]>([]);
 
   useEffect(() => {
     const savedNickname = localStorage.getItem('nickname');
@@ -82,11 +88,82 @@ export default function RoomPage() {
 
     const dateStrings = selectedDates.map(d => d.toISOString());
     const success = await handleCreateVote(voteTitle, dateStrings);
-    
+
     if (success) {
       setVoteTitle('');
       setSelectedDates([]);
       setShowCreateVote(false);
+    }
+  };
+
+  // 투표 모달 열기
+  const openVoteModal = async (vote: typeof votes[0]) => {
+    setSelectedVote(vote);
+    setShowVoteModal(true);
+
+    // 기존 투표 응답 불러오기
+    try {
+      const responses = await getVoteResponses(vote.id);
+
+      // 날짜별로 투표한 사람들 정리
+      const responseMap: { [key: string]: string[] } = {};
+      vote.dates.forEach(date => {
+        responseMap[date] = [];
+      });
+
+      responses.forEach((response: VoteResponse) => {
+        response.selectedDates.forEach(date => {
+          if (!responseMap[date]) {
+            responseMap[date] = [];
+          }
+          responseMap[date].push(response.nickname);
+        });
+      });
+
+      setVoteResponses(responseMap);
+
+      // 내가 선택한 날짜 불러오기
+      const myResponse = responses.find((r: VoteResponse) => r.nickname === nickname);
+      if (myResponse) {
+        setMySelectedDates(myResponse.selectedDates);
+      } else {
+        setMySelectedDates([]);
+      }
+    } catch (err) {
+      console.error('투표 응답 불러오기 실패:', err);
+    }
+  };
+
+  // 투표 제출
+  const onSubmitVote = async () => {
+    if (!selectedVote || !nickname) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    if (mySelectedDates.length === 0) {
+      alert('최소 1개의 날짜를 선택해주세요.');
+      return;
+    }
+
+    try {
+      await submitVoteResponse(selectedVote.id, nickname, mySelectedDates);
+      alert('투표가 완료되었습니다!');
+      setShowVoteModal(false);
+      setSelectedVote(null);
+      setMySelectedDates([]);
+    } catch (err) {
+      console.error('투표 제출 실패:', err);
+      alert('투표 제출에 실패했습니다.');
+    }
+  };
+
+  // 투표 날짜 토글
+  const toggleVoteDate = (dateStr: string) => {
+    if (mySelectedDates.includes(dateStr)) {
+      setMySelectedDates(mySelectedDates.filter(d => d !== dateStr));
+    } else {
+      setMySelectedDates([...mySelectedDates, dateStr]);
     }
   };
 
@@ -270,18 +347,19 @@ export default function RoomPage() {
           </h2>
           <div className="space-y-3">
             {votes.filter(v => v.isActive).map((vote) => (
-              <div
+              <button
                 key={vote.id}
-                className="p-4 bg-gray-50 rounded-xl border border-gray-100"
+                onClick={() => openVoteModal(vote)}
+                className="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 hover:border-violet-300 transition text-left"
               >
                 <h3 className="font-medium text-gray-800">{vote.title}</h3>
                 <p className="text-sm text-gray-500 mt-1">
                   {vote.dates.length}개 날짜 · {new Date(vote.createdAt).toLocaleDateString('ko-KR')} 생성
                 </p>
-                <button className="mt-2 text-sm text-violet-600 font-medium">
+                <p className="mt-2 text-sm text-violet-600 font-medium">
                   투표하기 →
-                </button>
-              </div>
+                </p>
+              </button>
             ))}
             {votes.filter(v => v.isActive).length === 0 && (
               <p className="text-gray-400 text-sm text-center py-4">
@@ -304,14 +382,14 @@ export default function RoomPage() {
               >
                 <h3 className="font-medium text-gray-800">{vote.title}</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {vote.dates.length}개 날짜 · {new Date(vote.createdAt).toLocaleDateString('ko-KR')} 생성
+                  {vote.dates.length}개 날짜 · {new Date(vote.expireAt).toLocaleDateString('ko-KR')} 생성
                 </p>
                 <button className="mt-2 text-sm text-violet-600 font-medium">
                   결과 보기 →
                 </button>
               </div>
             ))}
-            {votes.filter(v => v.isActive).length === 0 && (
+            {votes.filter(v => !v.isActive).length === 0 && (
               <p className="text-gray-400 text-sm text-center py-4">
                 종료된 투표가 없습니다
               </p>
@@ -319,6 +397,160 @@ export default function RoomPage() {
           </div>
         </div>
       </div>
+
+      {/* 투표 모달 */}
+      {showVoteModal && selectedVote && (() => {
+        // 날짜별 투표 수 계산
+        const voteCounts = selectedVote.dates.map(dateStr => ({
+          date: dateStr,
+          count: (voteResponses[dateStr] || []).length
+        }));
+
+        // 최다 득표 수 찾기
+        const maxVotes = Math.max(...voteCounts.map(v => v.count), 0);
+
+        // 최다 득표 날짜들 (동점 포함)
+        const topDates = voteCounts
+          .filter(v => v.count === maxVotes && maxVotes > 0)
+          .map(v => v.date);
+
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
+              <h3 className="text-lg font-bold mb-2 text-gray-800">{selectedVote.title}</h3>
+              <p className="text-sm text-gray-500 mb-2">
+                참여 가능한 날짜를 선택해주세요 (중복 선택 가능)
+              </p>
+
+              {/* 가장 유력한 날짜 표시 */}
+              {topDates.length > 0 && (
+                <div className="mb-4 p-3 bg-violet-50 rounded-lg border border-violet-200">
+                  <p className="text-xs text-violet-600 font-semibold mb-1">
+                    가장 유력한 날짜
+                  </p>
+                  <div className="space-y-0.5">
+                    {topDates
+                      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+                      .map((dateStr, idx) => {
+                        const date = new Date(dateStr);
+                        return (
+                          <p key={idx} className="text-sm text-violet-700 font-medium">
+                            {date.toLocaleDateString('ko-KR', {
+                              month: 'long',
+                              day: 'numeric',
+                              weekday: 'short'
+                            })}
+                          </p>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* 날짜 목록 */}
+              <div className="space-y-3 mb-6">
+              {selectedVote.dates
+                .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+                .map((dateStr) => {
+                  const date = new Date(dateStr);
+                  const isSelected = mySelectedDates.includes(dateStr);
+                  const voters = voteResponses[dateStr] || [];
+
+                  return (
+                    <button
+                      key={dateStr}
+                      onClick={() => toggleVoteDate(dateStr)}
+                      className={`w-full p-4 rounded-xl border-2 transition text-left ${
+                        isSelected
+                          ? 'border-violet-500 bg-violet-50'
+                          : 'border-gray-200 bg-white hover:border-violet-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-800">
+                              {date.toLocaleDateString('ko-KR', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                weekday: 'short'
+                              })}
+                            </p>
+                            <span className="text-xs font-semibold text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">
+                              {voters.length}명
+                            </span>
+                          </div>
+                          {voters.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {voters.map((voterName, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-block px-2 py-0.5 bg-violet-100 text-violet-700 text-xs rounded-full"
+                                >
+                                  {voterName}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-3">
+                          <div
+                            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                              isSelected
+                                ? 'border-violet-500 bg-violet-500'
+                                : 'border-gray-300'
+                            }`}
+                          >
+                            {isSelected && (
+                              <svg
+                                className="w-4 h-4 text-white"
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path d="M5 13l4 4L19 7"></path>
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 버튼 */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowVoteModal(false);
+                    setSelectedVote(null);
+                    setMySelectedDates([]);
+                  }}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={onSubmitVote}
+                  disabled={mySelectedDates.length === 0}
+                  className={`flex-1 py-3 rounded-xl font-medium ${
+                    mySelectedDates.length === 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-violet-600 text-white hover:bg-violet-700'
+                  }`}
+                >
+                  투표하기 ({mySelectedDates.length})
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </main>
   );
 }
