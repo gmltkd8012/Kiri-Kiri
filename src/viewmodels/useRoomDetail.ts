@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Room, Participant, Vote } from '@/models/types';
 import { getRoomByCode } from '@/repositories/roomRepository';
 import { getParticipantsByRoom, addParticipant } from '@/repositories/participantRepository';
-import { getVotesByRoom, createVote } from '@/repositories/voteRepository';
+import { getVotesByRoom, createVote, checkAndExpireVotes } from '@/repositories/voteRepository';
 
 export const useRoomDetail = (roomCode: string) => {
   const [room, setRoom] = useState<Room | null>(null);
@@ -19,6 +19,9 @@ export const useRoomDetail = (roomCode: string) => {
     setError(null);
 
     try {
+      // 만료된 투표 확인 및 종료
+      await checkAndExpireVotes(roomCode);
+
       const [roomData, participantsData, votesData] = await Promise.all([
         getRoomByCode(roomCode),
         getParticipantsByRoom(roomCode),

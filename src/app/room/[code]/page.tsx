@@ -290,6 +290,34 @@ export default function RoomPage() {
             )}
           </div>
         </div>
+
+        {/* 종료된 투표 리스트 */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h2 className="font-semibold text-gray-800 mb-3">
+            종료된 투표 ({votes.filter(v => !v.isActive).length}개)
+          </h2>
+          <div className="space-y-3">
+            {votes.filter(v => !v.isActive).map((vote) => (
+              <div
+                key={vote.id}
+                className="p-4 bg-gray-50 rounded-xl border border-gray-100"
+              >
+                <h3 className="font-medium text-gray-800">{vote.title}</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {vote.dates.length}개 날짜 · {new Date(vote.createdAt).toLocaleDateString('ko-KR')} 생성
+                </p>
+                <button className="mt-2 text-sm text-violet-600 font-medium">
+                  결과 보기 →
+                </button>
+              </div>
+            ))}
+            {votes.filter(v => v.isActive).length === 0 && (
+              <p className="text-gray-400 text-sm text-center py-4">
+                종료된 투표가 없습니다
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </main>
   );

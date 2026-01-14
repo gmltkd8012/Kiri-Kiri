@@ -22,6 +22,7 @@ export interface Vote {
   title: string;          // 투표 제목
   dates: string[];        // 투표 가능한 날짜들 (ISO string)
   createdAt: Date;
+  expireAt: Date;         // 만료 시간 (createdAt + 24시간)
   isActive: boolean;      // 진행중 여부
 }
 
