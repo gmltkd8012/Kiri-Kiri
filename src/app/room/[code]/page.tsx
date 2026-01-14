@@ -31,8 +31,8 @@ export default function RoomPage() {
   const params = useParams();
   const roomCode = params.code as string;
   
-  const { room, participants, votes, loading, error, joinRoom, handleCreateVote } = useRoomDetail(roomCode);
-  
+  const { room, participants, votes, loading, error, joinRoom, handleCreateVote, handleDeleteRoom, handleDeleteVote } = useRoomDetail(roomCode);
+
   const [nickname, setNickname] = useState('');
   const [isJoined, setIsJoined] = useState(false);
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
@@ -42,6 +42,10 @@ export default function RoomPage() {
   const [selectedVote, setSelectedVote] = useState<typeof votes[0] | null>(null);
   const [voteResponses, setVoteResponses] = useState<{ [key: string]: string[] }>({});
   const [mySelectedDates, setMySelectedDates] = useState<string[]>([]);
+  const [showRoomDropdown, setShowRoomDropdown] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'room' | 'vote', id?: string } | null>(null);
+  const [voteDropdowns, setVoteDropdowns] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const savedNickname = localStorage.getItem('nickname');
@@ -167,6 +171,58 @@ export default function RoomPage() {
     }
   };
 
+  // 방 삭제 확인
+  const confirmDeleteRoom = () => {
+    setDeleteTarget({ type: 'room' });
+    setShowDeleteConfirm(true);
+    setShowRoomDropdown(false);
+  };
+
+  // 투표 삭제 확인
+  const confirmDeleteVote = (voteId: string) => {
+    setDeleteTarget({ type: 'vote', id: voteId });
+    setShowDeleteConfirm(true);
+    setVoteDropdowns({});
+  };
+
+  // 삭제 실행
+  const executeDelete = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      if (deleteTarget.type === 'room') {
+        const success = await handleDeleteRoom();
+        if (success) {
+          alert('방이 삭제되었습니다.');
+          window.location.href = '/';
+        } else {
+          alert('방 삭제에 실패했습니다.');
+        }
+      } else if (deleteTarget.type === 'vote' && deleteTarget.id) {
+        const success = await handleDeleteVote(deleteTarget.id);
+        if (success) {
+          alert('투표가 삭제되었습니다.');
+        } else {
+          alert('투표 삭제에 실패했습니다.');
+        }
+      }
+    } catch (err) {
+      console.error('삭제 실패:', err);
+      alert('삭제에 실패했습니다.');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  // 투표 드롭다운 토글
+  const toggleVoteDropdown = (voteId: string) => {
+    setVoteDropdowns(prev => ({
+      ...prev,
+      [voteId]: !prev[voteId]
+    }));
+  };
+
   // 날짜 타일 클래스
   const tileClassName = ({ date }: { date: Date }) => {
     const classes: string[] = [];
@@ -203,10 +259,39 @@ export default function RoomPage() {
     <main className="min-h-screen bg-gray-100">
       {/* 상단 헤더 */}
       <div className="bg-gradient-to-r from-violet-500 to-purple-600 text-white p-6">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold mb-1">{room.title}</h1>
-          {room.memo && <p className="text-violet-100 text-sm">{room.memo}</p>}
-          <p className="text-violet-200 text-xs mt-2">초대코드: {room.code}</p>
+        <div className="max-w-2xl mx-auto relative">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold mb-1">{room.title}</h1>
+              {room.memo && <p className="text-violet-100 text-sm">{room.memo}</p>}
+              <p className="text-violet-200 text-xs mt-2">초대코드: {room.code}</p>
+            </div>
+
+            {/* 방장만 보이는 삭제 버튼 */}
+            {nickname === room.hostNickname && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowRoomDropdown(!showRoomDropdown)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition"
+                >
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                  </svg>
+                </button>
+
+                {showRoomDropdown && (
+                  <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={confirmDeleteRoom}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      방 삭제
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -347,19 +432,48 @@ export default function RoomPage() {
           </h2>
           <div className="space-y-3">
             {votes.filter(v => v.isActive).map((vote) => (
-              <button
-                key={vote.id}
-                onClick={() => openVoteModal(vote)}
-                className="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 hover:border-violet-300 transition text-left"
-              >
-                <h3 className="font-medium text-gray-800">{vote.title}</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  {vote.dates.length}개 날짜 · {new Date(vote.createdAt).toLocaleDateString('ko-KR')} 생성
-                </p>
-                <p className="mt-2 text-sm text-violet-600 font-medium">
-                  투표하기 →
-                </p>
-              </button>
+              <div key={vote.id} className="relative">
+                <div
+                  onClick={() => openVoteModal(vote)}
+                  className="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 hover:border-violet-300 transition cursor-pointer"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-800">{vote.title}</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {vote.dates.length}개 날짜 · {new Date(vote.createdAt).toLocaleDateString('ko-KR')} 생성
+                      </p>
+                      <p className="mt-2 text-sm text-violet-600 font-medium">
+                        투표하기 →
+                      </p>
+                    </div>
+
+                    {/* 투표 삭제 버튼 (누구나 삭제 가능) */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleVoteDropdown(vote.id);
+                      }}
+                      className="p-2 hover:bg-gray-200 rounded-lg transition"
+                    >
+                      <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {voteDropdowns[vote.id] && (
+                  <div className="absolute right-2 top-12 w-32 bg-white rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={() => confirmDeleteVote(vote.id)}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      투표 삭제
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
             {votes.filter(v => v.isActive).length === 0 && (
               <p className="text-gray-400 text-sm text-center py-4">
@@ -376,17 +490,44 @@ export default function RoomPage() {
           </h2>
           <div className="space-y-3">
             {votes.filter(v => !v.isActive).map((vote) => (
-              <div
-                key={vote.id}
-                className="p-4 bg-gray-50 rounded-xl border border-gray-100"
-              >
-                <h3 className="font-medium text-gray-800">{vote.title}</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  {vote.dates.length}개 날짜 · {new Date(vote.expireAt).toLocaleDateString('ko-KR')} 생성
-                </p>
-                <button className="mt-2 text-sm text-violet-600 font-medium">
-                  결과 보기 →
-                </button>
+              <div key={vote.id} className="relative">
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-800">{vote.title}</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {vote.dates.length}개 날짜 · {new Date(vote.expireAt).toLocaleDateString('ko-KR')} 종료
+                      </p>
+                      <p className="mt-2 text-sm text-violet-600 font-medium">
+                        결과 보기 →
+                      </p>
+                    </div>
+
+                    {/* 투표 삭제 버튼 */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleVoteDropdown(vote.id);
+                      }}
+                      className="p-2 hover:bg-gray-200 rounded-lg transition"
+                    >
+                      <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {voteDropdowns[vote.id] && (
+                  <div className="absolute right-2 top-12 w-32 bg-white rounded-lg shadow-lg z-50">
+                    <button
+                      onClick={() => confirmDeleteVote(vote.id)}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      투표 삭제
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {votes.filter(v => !v.isActive).length === 0 && (
@@ -551,6 +692,39 @@ export default function RoomPage() {
           </div>
         );
       })()}
+
+      {/* 삭제 확인 모달 */}
+      {showDeleteConfirm && deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-2 text-gray-800">
+              {deleteTarget.type === 'room' ? '방 삭제' : '투표 삭제'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              {deleteTarget.type === 'room'
+                ? '방을 삭제하면 모든 투표와 참여자 정보가 함께 삭제됩니다. 정말 삭제하시겠습니까?'
+                : '투표를 삭제하면 모든 투표 응답이 함께 삭제됩니다. 정말 삭제하시겠습니까?'}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteTarget(null);
+                }}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200"
+              >
+                취소
+              </button>
+              <button
+                onClick={executeDelete}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

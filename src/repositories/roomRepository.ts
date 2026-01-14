@@ -6,9 +6,11 @@ import {
   query,
   where,
   getDocs,
+  deleteDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { Room } from '@/models/types';
-import { addParticipant } from './participantRepository';  // 추가
+import { addParticipant } from './participantRepository';
 
 const COLLECTION_NAME = 'rooms';
 const MAX_RETRY = 5;
@@ -81,9 +83,9 @@ export const getRoomByCode = async (code: string): Promise<Room | null> => {
     collection(db, COLLECTION_NAME),
     where('code', '==', code.toUpperCase())
   );
-  
+
   const snapshot = await getDocs(q);
-  
+
   if (snapshot.empty) {
     return null;
   }
@@ -93,4 +95,61 @@ export const getRoomByCode = async (code: string): Promise<Room | null> => {
     ...data,
     createdAt: new Date(data.createdAt),
   } as Room;
+};
+
+// 방 삭제 (관련된 모든 데이터 CASCADE 삭제)
+export const deleteRoom = async (roomCode: string): Promise<void> => {
+  const batch = writeBatch(db);
+
+  // 1. 방의 모든 투표 조회
+  const votesQuery = query(
+    collection(db, 'votes'),
+    where('roomCode', '==', roomCode)
+  );
+  const votesSnapshot = await getDocs(votesQuery);
+
+  // 2. 각 투표의 모든 응답 삭제
+  for (const voteDoc of votesSnapshot.docs) {
+    const voteId = voteDoc.id;
+
+    // 투표 응답 조회
+    const responsesQuery = query(
+      collection(db, 'voteResponses'),
+      where('voteId', '==', voteId)
+    );
+    const responsesSnapshot = await getDocs(responsesQuery);
+
+    // 응답 삭제
+    responsesSnapshot.docs.forEach(responseDoc => {
+      batch.delete(responseDoc.ref);
+    });
+
+    // 투표 삭제
+    batch.delete(voteDoc.ref);
+  }
+
+  // 3. 모든 참여자 삭제
+  const participantsQuery = query(
+    collection(db, 'participants'),
+    where('roomCode', '==', roomCode)
+  );
+  const participantsSnapshot = await getDocs(participantsQuery);
+
+  participantsSnapshot.docs.forEach(participantDoc => {
+    batch.delete(participantDoc.ref);
+  });
+
+  // 4. 방 삭제
+  const roomQuery = query(
+    collection(db, COLLECTION_NAME),
+    where('code', '==', roomCode)
+  );
+  const roomSnapshot = await getDocs(roomQuery);
+
+  if (!roomSnapshot.empty) {
+    batch.delete(roomSnapshot.docs[0].ref);
+  }
+
+  // 일괄 삭제 실행
+  await batch.commit();
 };

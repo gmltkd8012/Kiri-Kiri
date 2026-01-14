@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Room, Participant, Vote } from '@/models/types';
 import { getRoomByCode } from '@/repositories/roomRepository';
 import { getParticipantsByRoom, addParticipant } from '@/repositories/participantRepository';
-import { getVotesByRoom, createVote, checkAndExpireVotes } from '@/repositories/voteRepository';
+import { getVotesByRoom, createVote, checkAndExpireVotes, deleteVote } from '@/repositories/voteRepository';
+import { deleteRoom } from '@/repositories/roomRepository';
 
 export const useRoomDetail = (roomCode: string) => {
   const [room, setRoom] = useState<Room | null>(null);
@@ -68,6 +69,29 @@ export const useRoomDetail = (roomCode: string) => {
     }
   };
 
+  // 방 삭제
+  const handleDeleteRoom = async (): Promise<boolean> => {
+    try {
+      await deleteRoom(roomCode);
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  };
+
+  // 투표 삭제
+  const handleDeleteVote = async (voteId: string): Promise<boolean> => {
+    try {
+      await deleteVote(voteId);
+      await loadRoomData(); // 새로고침
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (roomCode) {
       loadRoomData();
@@ -82,6 +106,8 @@ export const useRoomDetail = (roomCode: string) => {
     error,
     joinRoom,
     handleCreateVote,
+    handleDeleteRoom,
+    handleDeleteVote,
     refresh: loadRoomData,
   };
 };

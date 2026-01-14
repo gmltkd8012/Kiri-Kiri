@@ -7,6 +7,7 @@ import {
   where,
   getDocs,
   updateDoc,
+  writeBatch,
 } from 'firebase/firestore';
 import { Vote, VoteResponse } from '@/models/types';
 
@@ -148,4 +149,27 @@ export const checkAndExpireVotes = async (roomCode: string): Promise<void> => {
     .map((vote) => closeVote(vote.id));
 
   await Promise.all(expirePromises);
+};
+
+// 투표 삭제 (관련된 모든 응답 CASCADE 삭제)
+export const deleteVote = async (voteId: string): Promise<void> => {
+  const batch = writeBatch(db);
+
+  // 1. 투표의 모든 응답 조회 및 삭제
+  const responsesQuery = query(
+    collection(db, RESPONSES_COLLECTION),
+    where('voteId', '==', voteId)
+  );
+  const responsesSnapshot = await getDocs(responsesQuery);
+
+  responsesSnapshot.docs.forEach(responseDoc => {
+    batch.delete(responseDoc.ref);
+  });
+
+  // 2. 투표 삭제
+  const voteRef = doc(db, VOTES_COLLECTION, voteId);
+  batch.delete(voteRef);
+
+  // 일괄 삭제 실행
+  await batch.commit();
 };
