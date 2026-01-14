@@ -133,6 +133,12 @@ export const getVoteResponses = async (voteId: string): Promise<VoteResponse[]> 
   });
 };
 
+// Vote ID 의 투표자 조회
+export const getVoteParticipants = async (voteId: string): Promise<string[]> => {
+  const responses = await getVoteResponses(voteId);
+  return responses.map(response => response.nickname);
+}
+
 // 투표 종료
 export const closeVote = async (voteId: string): Promise<void> => {
   const voteRef = doc(db, VOTES_COLLECTION, voteId);

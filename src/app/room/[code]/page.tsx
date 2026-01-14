@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import { useRoomDetail } from '@/viewmodels/useRoomDetail';
-import { getVoteResponses, submitVoteResponse } from '@/repositories/voteRepository';
+import { getVoteResponses, submitVoteResponse, getVoteParticipants } from '@/repositories/voteRepository';
 import { VoteResponse } from '@/models/types';
 import 'react-calendar/dist/Calendar.css';
 
@@ -46,6 +46,7 @@ export default function RoomPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'room' | 'vote', id?: string } | null>(null);
   const [voteDropdowns, setVoteDropdowns] = useState<{ [key: string]: boolean }>({});
+  const [voteParticipantsMap, setVoteParticipantsMap] = useState<{ [voteId: string]: string[] }>({});
 
   useEffect(() => {
     const savedNickname = localStorage.getItem('nickname');
@@ -54,6 +55,29 @@ export default function RoomPage() {
       setIsJoined(true);
     }
   }, []);
+
+  // 투표 목록이 변경될 때마다 각 투표의 참여자 정보 로드
+  useEffect(() => {
+    const loadVoteParticipants = async () => {
+      const participantsMap: { [voteId: string]: string[] } = {};
+
+      for (const vote of votes) {
+        try {
+          const participants = await getVoteParticipants(vote.id);
+          participantsMap[vote.id] = participants;
+        } catch (err) {
+          console.error(`투표 ${vote.id} 참여자 로드 실패:`, err);
+          participantsMap[vote.id] = [];
+        }
+      }
+
+      setVoteParticipantsMap(participantsMap);
+    };
+
+    if (votes.length > 0) {
+      loadVoteParticipants();
+    }
+  }, [votes]);
 
   const onJoin = async () => {
     if (!nickname.trim()) {
@@ -221,6 +245,11 @@ export default function RoomPage() {
       ...prev,
       [voteId]: !prev[voteId]
     }));
+  };
+
+  // 투표자 명단 확인
+  const fetchVoters = async (voteId: string) => {
+    const voters = await getVoteParticipants(voteId);
   };
 
   // 날짜 타일 클래스
@@ -443,6 +472,27 @@ export default function RoomPage() {
                       <p className="text-sm text-gray-500 mt-1">
                         {vote.dates.length}개 날짜 · {new Date(vote.createdAt).toLocaleDateString('ko-KR')} 생성
                       </p>
+
+                      {/* 참여자 정보 */}
+                      {voteParticipantsMap[vote.id] && voteParticipantsMap[vote.id].length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1 items-center">
+                          <span className="text-xs text-gray-500">참여:</span>
+                          {voteParticipantsMap[vote.id].slice(0, 3).map((nickname, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-block px-2 py-0.5 bg-violet-100 text-violet-700 text-xs rounded-full"
+                            >
+                              {nickname}
+                            </span>
+                          ))}
+                          {voteParticipantsMap[vote.id].length > 3 && (
+                            <span className="text-xs text-gray-500">
+                              외 {voteParticipantsMap[vote.id].length - 3}명
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       <p className="mt-2 text-sm text-violet-600 font-medium">
                         투표하기 →
                       </p>
@@ -498,6 +548,27 @@ export default function RoomPage() {
                       <p className="text-sm text-gray-500 mt-1">
                         {vote.dates.length}개 날짜 · {new Date(vote.expireAt).toLocaleDateString('ko-KR')} 종료
                       </p>
+
+                      {/* 참여자 정보 */}
+                      {voteParticipantsMap[vote.id] && voteParticipantsMap[vote.id].length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1 items-center">
+                          <span className="text-xs text-gray-500">참여:</span>
+                          {voteParticipantsMap[vote.id].slice(0, 3).map((nickname, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full"
+                            >
+                              {nickname}
+                            </span>
+                          ))}
+                          {voteParticipantsMap[vote.id].length > 3 && (
+                            <span className="text-xs text-gray-500">
+                              외 {voteParticipantsMap[vote.id].length - 3}명
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       <p className="mt-2 text-sm text-violet-600 font-medium">
                         결과 보기 →
                       </p>
