@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Script from 'next/script';
+import KakaoSDKInitializer from "@/components/KakaoSDKInitializer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,10 +25,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="ko" className={`${geistSans.variable} ${geistMono.variable}`} >
+      <body className="antialiased">
+        <Script
+          src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js"
+          strategy="afterInteractive"
+        />
+        <KakaoSDKInitializer />
         {children}
       </body>
     </html>

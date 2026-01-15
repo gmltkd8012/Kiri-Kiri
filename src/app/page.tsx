@@ -40,7 +40,7 @@ export default function Home() {
       alert('방 제목을 입력해주세요.');
       return;
     }
-    
+
     const room = await handleCreateRoom(roomTitle, nickname, memo || undefined);
     if (room) {
       localStorage.setItem('nickname', nickname);
@@ -145,7 +145,7 @@ export default function Home() {
                 maxLength={20}
               />
             </div>
-            <div className="mb-6">
+            <div className="mb-4">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 메모 <span className="text-gray-400 font-normal">(선택)</span>
               </label>

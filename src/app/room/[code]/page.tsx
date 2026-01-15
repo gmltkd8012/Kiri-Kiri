@@ -6,6 +6,7 @@ import Calendar from 'react-calendar';
 import { useRoomDetail } from '@/viewmodels/useRoomDetail';
 import { getVoteResponses, submitVoteResponse, getVoteParticipants } from '@/repositories/voteRepository';
 import { VoteResponse } from '@/models/types';
+import { shareVoteToKakao, shareRoomToKakao } from '@/utils/kakaoShare';
 import 'react-calendar/dist/Calendar.css';
 
 type ValuePiece = Date | null;
@@ -47,6 +48,8 @@ export default function RoomPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'room' | 'vote', id?: string } | null>(null);
   const [voteDropdowns, setVoteDropdowns] = useState<{ [key: string]: boolean }>({});
   const [voteParticipantsMap, setVoteParticipantsMap] = useState<{ [voteId: string]: string[] }>({});
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [lastCreatedVoteTitle, setLastCreatedVoteTitle] = useState('');
 
   useEffect(() => {
     const savedNickname = localStorage.getItem('nickname');
@@ -118,9 +121,11 @@ export default function RoomPage() {
     const success = await handleCreateVote(voteTitle, dateStrings);
 
     if (success) {
+      setLastCreatedVoteTitle(voteTitle);
       setVoteTitle('');
       setSelectedDates([]);
       setShowCreateVote(false);
+      setShowShareModal(true); // 공유 모달 표시
     }
   };
 
@@ -454,6 +459,38 @@ export default function RoomPage() {
           </div>
         )}
 
+        {/* 공유 모달 */}
+        {showShareModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+              <h3 className="text-lg font-bold mb-2 text-gray-800">투표가 생성되었습니다! 🎉</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                친구들에게 투표를 공유해보세요
+              </p>
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    shareVoteToKakao(room.title, lastCreatedVoteTitle, roomCode);
+                    setShowShareModal(false);
+                  }}
+                  className="w-full py-3 bg-[#FEE500] hover:bg-[#FDD835] text-gray-800 rounded-xl font-medium flex items-center justify-center gap-2 transition"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3C6.48 3 2 6.58 2 11c0 2.5 1.37 4.77 3.55 6.36-.2.75-.75 2.64-.81 2.83-.07.22.08.22.18.16.08-.05 2.54-1.68 3.24-2.14.91.23 1.88.35 2.84.35 5.52 0 10-3.58 10-8S17.52 3 12 3z"/>
+                  </svg>
+                  카카오톡으로 공유하기
+                </button>
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition"
+                >
+                  나중에 하기
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 진행중인 투표 리스트 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h2 className="font-semibold text-gray-800 mb-3">
@@ -514,10 +551,23 @@ export default function RoomPage() {
                 </div>
 
                 {voteDropdowns[vote.id] && (
-                  <div className="absolute right-2 top-12 w-32 bg-white rounded-lg shadow-lg z-50">
+                  <div className="absolute right-2 top-12 w-36 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        shareVoteToKakao(room.title, vote.title, roomCode);
+                        setVoteDropdowns({});
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                      </svg>
+                      공유하기
+                    </button>
                     <button
                       onClick={() => confirmDeleteVote(vote.id)}
-                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-b-lg"
                     >
                       투표 삭제
                     </button>
@@ -590,10 +640,23 @@ export default function RoomPage() {
                 </div>
 
                 {voteDropdowns[vote.id] && (
-                  <div className="absolute right-2 top-12 w-32 bg-white rounded-lg shadow-lg z-50">
+                  <div className="absolute right-2 top-12 w-36 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        shareVoteToKakao(room.title, vote.title, roomCode);
+                        setVoteDropdowns({});
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                      </svg>
+                      공유하기
+                    </button>
                     <button
                       onClick={() => confirmDeleteVote(vote.id)}
-                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-b-lg"
                     >
                       투표 삭제
                     </button>

@@ -56,7 +56,7 @@ export const createRoom = async (
 ): Promise<Room> => {
   const code = await generateUniqueCode();
   const roomRef = doc(collection(db, COLLECTION_NAME));
-  
+
   const room: Room = {
     id: roomRef.id,
     code,

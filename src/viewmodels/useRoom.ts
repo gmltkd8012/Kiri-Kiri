@@ -17,7 +17,7 @@ export const useRoom = () => {
   ): Promise<Room | null> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const room = await createRoom(title, nickname, memo);
       return room;
