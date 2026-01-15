@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRoom } from '@/viewmodels/useRoom';
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loading, error, handleCreateRoom, handleJoinRoom } = useRoom();
@@ -194,5 +194,17 @@ export default function Home() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center p-4">
+        <div className="text-white">로딩 중...</div>
+      </main>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
