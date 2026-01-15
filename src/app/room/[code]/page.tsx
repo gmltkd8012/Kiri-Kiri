@@ -82,6 +82,7 @@ export default function RoomPage() {
     }
   }, [votes]);
 
+
   const onJoin = async () => {
     if (!nickname.trim()) {
       alert('닉네임을 입력해주세요.');
@@ -291,6 +292,17 @@ export default function RoomPage() {
 
   return (
     <main className="min-h-screen bg-gray-100">
+      {/* 드롭다운 오버레이 */}
+      {(showRoomDropdown || Object.values(voteDropdowns).some(v => v)) && (
+        <div
+          className="fixed inset-0 bg-black/20 z-40"
+          onClick={() => {
+            setShowRoomDropdown(false);
+            setVoteDropdowns({});
+          }}
+        />
+      )}
+
       {/* 상단 헤더 */}
       <div className="bg-gradient-to-r from-violet-500 to-purple-600 text-white p-6">
         <div className="max-w-2xl mx-auto relative">
@@ -314,7 +326,7 @@ export default function RoomPage() {
                 </button>
 
                 {showRoomDropdown && (
-                  <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg z-50">
+                  <div className="dropdown-menu absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
                     <button
                       onClick={confirmDeleteRoom}
                       className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg"
@@ -551,7 +563,7 @@ export default function RoomPage() {
                 </div>
 
                 {voteDropdowns[vote.id] && (
-                  <div className="absolute right-2 top-12 w-36 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
+                  <div className="dropdown-menu absolute right-2 top-12 w-36 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -640,7 +652,7 @@ export default function RoomPage() {
                 </div>
 
                 {voteDropdowns[vote.id] && (
-                  <div className="absolute right-2 top-12 w-36 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
+                  <div className="dropdown-menu absolute right-2 top-12 w-36 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
