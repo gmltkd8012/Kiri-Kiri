@@ -1,18 +1,30 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useRoom } from '@/viewmodels/useRoom';
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { loading, error, handleCreateRoom, handleJoinRoom } = useRoom();
-  
+
   const [mode, setMode] = useState<'join' | 'create'>('join');
   const [nickname, setNickname] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [roomTitle, setRoomTitle] = useState('');
   const [memo, setMemo] = useState('');
+  const [isInvited, setIsInvited] = useState(false);
+
+  // URL에서 초대 코드 자동 설정
+  useEffect(() => {
+    const code = searchParams.get('code');
+    if (code) {
+      setInviteCode(code.toUpperCase());
+      setIsInvited(true);
+      setMode('join');
+    }
+  }, [searchParams]);
 
   const onJoinRoom = async () => {
     if (!nickname.trim()) {
@@ -57,29 +69,31 @@ export default function Home() {
           <p className="text-gray-500">친구들과 모임 날짜를 정해보세요</p>
         </div>
 
-        {/* 탭 전환 */}
-        <div className="flex mb-6 bg-gray-100 rounded-xl p-1">
-          <button
-            className={`flex-1 py-2.5 rounded-lg font-semibold transition ${
-              mode === 'join'
-                ? 'bg-white shadow text-violet-600'
-                : 'text-gray-500'
-            }`}
-            onClick={() => setMode('join')}
-          >
-            방 입장
-          </button>
-          <button
-            className={`flex-1 py-2.5 rounded-lg font-semibold transition ${
-              mode === 'create'
-                ? 'bg-white shadow text-violet-600'
-                : 'text-gray-500'
-            }`}
-            onClick={() => setMode('create')}
-          >
-            방 만들기
-          </button>
-        </div>
+        {/* 탭 전환 (초대 링크로 들어온 경우 숨김) */}
+        {!isInvited && (
+          <div className="flex mb-6 bg-gray-100 rounded-xl p-1">
+            <button
+              className={`flex-1 py-2.5 rounded-lg font-semibold transition ${
+                mode === 'join'
+                  ? 'bg-white shadow text-violet-600'
+                  : 'text-gray-500'
+              }`}
+              onClick={() => setMode('join')}
+            >
+              방 입장
+            </button>
+            <button
+              className={`flex-1 py-2.5 rounded-lg font-semibold transition ${
+                mode === 'create'
+                  ? 'bg-white shadow text-violet-600'
+                  : 'text-gray-500'
+              }`}
+              onClick={() => setMode('create')}
+            >
+              방 만들기
+            </button>
+          </div>
+        )}
 
         {/* 에러 메시지 */}
         {error && (
@@ -106,19 +120,30 @@ export default function Home() {
         {/* 방 입장 모드 */}
         {mode === 'join' && (
           <>
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                초대 코드
-              </label>
-              <input
-                type="text"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                placeholder="12자리 초대코드를 입력해 주세요."
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-violet-500 outline-none transition"
-                maxLength={12}
-              />
-            </div>
+            {/* 초대 링크로 들어온 경우 안내 메시지 표시 */}
+            {isInvited && (
+              <div className="mb-4 p-3 bg-violet-100 text-violet-700 rounded-xl text-sm text-center">
+                초대받은 방에 입장합니다. 닉네임을 입력해주세요!
+              </div>
+            )}
+
+            {/* 초대 링크가 아닌 경우에만 초대 코드 입력 표시 */}
+            {!isInvited && (
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  초대 코드
+                </label>
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  placeholder="12자리 초대코드를 입력해 주세요."
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-violet-500 outline-none transition"
+                  maxLength={12}
+                />
+              </div>
+            )}
+
             <button
               onClick={onJoinRoom}
               disabled={loading}

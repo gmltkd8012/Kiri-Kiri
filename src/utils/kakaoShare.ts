@@ -9,11 +9,11 @@ export const shareVoteToKakao = (
     }
 
     const isLocalhost = window.location.hostname === 'localhost';
-    const shareUrl = isLocalhost
-        ? `http://192.168.219.102:3000/room/${roomCode}`
-        : `${window.location.origin}/room/${roomCode}`;
+    const baseUrl = isLocalhost ? 'http://192.168.219.102:3000' : window.location.origin;
+    const shareUrl = `${baseUrl}?code=${roomCode}`;
 
     const templateId = parseInt(process.env.NEXT_PUBLIC_KAKAO_VOTE_TEMPLATE_ID || '0', 10);
+    console.log('Shared Link -> ', shareUrl);
 
     try {
         window.Kakao.Share.sendCustom({
@@ -43,9 +43,8 @@ export const shareRoomToKakao = (
   }
 
   const isLocalhost = window.location.hostname === 'localhost';
-  const shareUrl = isLocalhost
-      ? `http://192.168.219.102:3000/room/${roomCode}`
-      : `${window.location.origin}/room/${roomCode}`;
+  const baseUrl = isLocalhost ? 'http://192.168.219.102:3000' : window.location.origin;
+  const shareUrl = `${baseUrl}?code=${roomCode}`;
 
   const templateId = parseInt(process.env.NEXT_PUBLIC_KAKAO_ROOM_TEMPLATE_ID || '0', 10);
 
